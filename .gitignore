@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.env.*
+frontend/node_modules/
+build_dist/
+build_tmp/
+dist/
+*.spec
+*.tsbuildinfo
