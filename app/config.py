@@ -78,8 +78,9 @@ class AppConfig:
     api_keys: List[str] = field(default_factory=discover_local_gemini_keys)
     ptt_key: str = "rctrl"
     toggle_hotkey: str = "ctrl+shift+space"
-    dictation_mode: str = "accurate"  # "accurate" | "polish"
-    language_mode: str = "az-tech"    # "az-tech" | "az" | "en" | "auto"
+    dictation_mode: str = "accurate"      # "accurate" | "polish"
+    transcription_mode: str = "verbatim"  # "verbatim" | "smart"
+    language_mode: str = "az-tech"        # "az-tech" | "az" | "en" | "auto"
     typing_mode: str = "smart"        # "smart" | "unicode" | "paste"
     auto_enter: bool = False
     device_index: int | None = None

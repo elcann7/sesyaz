@@ -1,5 +1,5 @@
 ﻿$ErrorActionPreference = "Stop"
-$root = "C:\Users\elcan\.gemini\antigravity\scratch\sesyaz"
+$root = $PSScriptRoot
 $py = "C:\Users\elcan\AppData\Local\Programs\Python\Python312\python.exe"
 $installDir = "$env:LOCALAPPDATA\Programs\SesYaz"
 

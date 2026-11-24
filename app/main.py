@@ -407,6 +407,7 @@ class SesYazApp:
                     api_keys=self.config.api_keys,
                     language_mode=self.config.language_mode,
                     custom_vocabulary=self.config.custom_vocabulary,
+                    transcription_mode=self.config.transcription_mode,
                     on_interim=self._on_live_interim,
                 )
                 self._live_streamer = streamer
@@ -461,7 +462,7 @@ class SesYazApp:
                 try:
                     res = streamer.finish(timeout_s=4.2)
                     live_connected = streamer.connected_ok
-                    if res.text.strip() and self.config.dictation_mode == "polish":
+                    if res.text.strip() and self.config.dictation_mode == "polish" and self.config.transcription_mode != "verbatim":
                         polished = polish_text(
                             res.text,
                             self.config.api_keys,
@@ -483,6 +484,7 @@ class SesYazApp:
                     dictation_mode=self.config.dictation_mode,
                     language_mode=self.config.language_mode,
                     custom_vocabulary=self.config.custom_vocabulary,
+                    transcription_mode=self.config.transcription_mode,
                 )
             text = res.text.strip() if res else ""
             if not text:
@@ -581,6 +583,7 @@ class SesYazApp:
                 "ptt_key",
                 "toggle_hotkey",
                 "dictation_mode",
+                "transcription_mode",
                 "language_mode",
                 "typing_mode",
                 "auto_enter",
@@ -592,6 +595,10 @@ class SesYazApp:
             ):
                 if k in body:
                     setattr(self.config, k, body[k])
+            if body.get("transcription_mode") == "verbatim" and "dictation_mode" not in body:
+                self.config.dictation_mode = "accurate"
+            elif body.get("dictation_mode") == "polish" and "transcription_mode" not in body:
+                self.config.transcription_mode = "smart"
             if body.get("add_api_key"):
                 new_k = str(body["add_api_key"]).strip()
                 if new_k and new_k not in self.config.api_keys:

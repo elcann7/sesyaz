@@ -20,6 +20,7 @@ export interface AppConfigState {
   ptt_key: string
   toggle_hotkey: string
   dictation_mode: 'accurate' | 'polish'
+  transcription_mode?: 'verbatim' | 'smart'
   language_mode: 'az-tech' | 'az' | 'en' | 'auto'
   typing_mode: 'smart' | 'unicode' | 'paste'
   auto_enter: boolean

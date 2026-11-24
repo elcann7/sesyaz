@@ -89,11 +89,13 @@ class LiveTranscribeStreamer:
         api_keys: List[str],
         language_mode: str = "az-tech",
         custom_vocabulary: List[str] | None = None,
+        transcription_mode: str = "verbatim",
         on_interim: Optional[Callable[[str], None]] = None,
     ) -> None:
         self.api_keys = [k.strip() for k in api_keys if k and k.strip()]
         self.language_mode = language_mode
         self.vocabulary = list(custom_vocabulary or [])
+        self.transcription_mode = "smart" if transcription_mode == "smart" else "verbatim"
         self.on_interim = on_interim
 
         self._pcm_queue: queue.SimpleQueue[Optional[bytes]] = queue.SimpleQueue()
@@ -157,10 +159,11 @@ class LiveTranscribeStreamer:
 
     async def _async_session(self) -> None:
         codes = _language_codes_for(self.language_mode)
+        is_verbatim = self.transcription_mode != "smart"
         t_cfg = types.AudioTranscriptionConfig(
-            mode="SMART",
+            mode="VERBATIM" if is_verbatim else "SMART",
             language_codes=codes,
-            custom_vocabulary=self.vocabulary[:50] if self.vocabulary else None,
+            custom_vocabulary=None if is_verbatim else (self.vocabulary[:50] if self.vocabulary else None),
         )
         live_cfg = types.LiveConnectConfig(
             response_modalities=["TEXT"],
@@ -276,6 +279,7 @@ def transcribe_wav(
     dictation_mode: str = "accurate",
     language_mode: str = "az-tech",
     custom_vocabulary: List[str] | None = None,
+    transcription_mode: str = "verbatim",
 ) -> TranscriptionResult:
     """Fallback batch transcription via Gemini Interactions API with multi-key failover."""
     if not wav_bytes:
@@ -287,17 +291,18 @@ def transcribe_wav(
 
     wav_b64 = base64.b64encode(wav_bytes).decode("ascii")
     vocab = custom_vocabulary or []
+    is_verbatim = transcription_mode != "smart"
     t0 = time.perf_counter()
     last_err: Exception | None = None
 
     for key in keys:
         try:
             client_beta = genai.Client(api_key=key, http_options={"api_version": "v1beta"})
-            t_cfg: dict = {"mode": "smart"}
+            t_cfg: dict = {"mode": "verbatim" if is_verbatim else "smart"}
             codes = _language_codes_for(language_mode)
             if codes:
                 t_cfg["language_codes"] = codes
-            if vocab:
+            if vocab and not is_verbatim:
                 t_cfg["custom_vocabulary"] = vocab[:50]
             interaction = client_beta.interactions.create(
                 model="gemini-3.5-transcribe",
@@ -314,12 +319,12 @@ def transcribe_wav(
                     mode=dictation_mode,
                 )
 
-            if dictation_mode != "polish":
+            if is_verbatim or dictation_mode != "polish":
                 return TranscriptionResult(
                     text=raw_txt,
                     model="gemini-3.5-transcribe",
                     latency_ms=int((time.perf_counter() - t0) * 1000),
-                    mode="accurate",
+                    mode="verbatim" if is_verbatim else "accurate",
                 )
 
             clean_txt = polish_text(raw_txt, keys, language_mode, vocab)
@@ -335,7 +340,13 @@ def transcribe_wav(
     for key in keys:
         try:
             client_v1 = genai.Client(api_key=key)
-            prompt = _build_polish_instruction(language_mode, vocab)
+            prompt = (
+                "Transcribe the audio strictly verbatim, word-for-word. Preserve all grammar mistakes, "
+                "hesitations, filler words, false starts, and repeated words exactly as spoken. Do not fix, "
+                "smooth, or remove anything. Return ONLY plain text, or an empty string if silent."
+                if is_verbatim
+                else _build_polish_instruction(language_mode, vocab)
+            )
             interaction = client_v1.interactions.create(
                 model="gemini-3.5-flash-lite",
                 system_instruction=prompt,

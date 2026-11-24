@@ -25,7 +25,7 @@ flowchart LR
     K[Win32 WH_KEYBOARD_LL Hook\n+ Physical Key Watchdog] -->|Right Ctrl Down / Up| A[AudioRecorder\n16 kHz Mono Int16 PCM + 16-Band FFT]
     A -->|50ms Acoustic Energy Gate| V{Speech Detected?}
     V -->|Silence / < 0.35s| X[Discard Quietly\n0ms Reset]
-    V -->|Live PCM Stream| G[Gemini 3.5 Transcribe Live\nWebSocket · SMART + Custom Vocabulary]
+    V -->|Live PCM Stream| G[Gemini 3.5 Transcribe Live\nWebSocket · VERBATIM / SMART Mode]
     G -->|Interim Stream| P[Focus-Free Pill HUD\nWS_EX_NOACTIVATE · GPU-Warm]
     G -->|Final Utterance| O{Optional Polish}
     O -->|Direct| T[Win32 SendInput\nKEYEVENTF_UNICODE / Paste-Restore]
@@ -37,7 +37,7 @@ flowchart LR
 
 - **Streaming WebSocket (`gemini-3.5-transcribe-live`) over Batch REST (`gemini-3.5-transcribe`)**
   - Batch file transcription incurs post-speech upload latency and a tight 25 RPD free-tier ceiling.
-  - Streaming 16 kHz PCM frames over `v1beta` Live API with manual VAD (`ActivityStart` / `ActivityEnd`), `mode="SMART"`, `language_codes=["az", "en"]`, and `custom_vocabulary` biasing delivers live interim feedback while speaking, `< 1s` commit latency on key release, and unlimited request/day throughput.
+  - Streaming 16 kHz PCM frames over `v1beta` Live API with manual VAD (`ActivityStart` / `ActivityEnd`), switchable `VERBATIM` (raw word-for-word, preserving hesitations, grammar slips, and repetitions) or `SMART` (disfluency cleanup + `custom_vocabulary` biasing) modes, `language_codes=["az", "en"]`, `< 1s` commit latency on key release, and unlimited request/day throughput.
 - **Acoustic Energy Gate + Hook Watchdog**
   - `AudioRecorder.stop()` computes peak amplitude (`>= 0.012`) and 95th-percentile 50 ms frame RMS (`>= 0.0035`) before committing, preventing silent or accidental taps (`< 0.35 s`) from triggering API calls or hallucinated output.
   - `GlobalHotkeyListener` filters `LLKHF_INJECTED` synthetic events and polls physical key state via `GetAsyncKeyState` every `100 ms`, eliminating stuck push-to-talk states when another window or elevation prompt consumes `WM_KEYUP`.

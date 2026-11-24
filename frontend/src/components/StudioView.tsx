@@ -161,9 +161,11 @@ export const StudioView: React.FC<StudioViewProps> = ({
                 ? 'LISTENING'
                 : status === 'transcribing'
                   ? 'FINALIZING'
-                  : config.dictation_mode === 'accurate'
-                    ? 'gemini-3.5-transcribe-live'
-                    : 'Live STT + Flash Lite'}
+                  : config.transcription_mode !== 'smart'
+                    ? 'gemini-3.5-live · VERBATIM'
+                    : config.dictation_mode === 'accurate'
+                      ? 'gemini-3.5-live · SMART'
+                      : 'Live STT + Flash Lite'}
             </span>
           </div>
 
@@ -224,23 +226,43 @@ export const StudioView: React.FC<StudioViewProps> = ({
                       <Magnet strength={0.16} padding={18}>
                         <button
                           type="button"
-                          onClick={() => updateConfig({ dictation_mode: 'accurate' })}
+                          onClick={() =>
+                            updateConfig({ transcription_mode: 'verbatim', dictation_mode: 'accurate' })
+                          }
                           className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2 text-[12px] font-semibold transition ${
-                            config.dictation_mode === 'accurate'
+                            config.transcription_mode !== 'smart'
                               ? 'border-[#f4f4f6] bg-[#f4f4f6] text-[#0a0a0b]'
                               : 'border-white/10 bg-white/[0.03] text-[#9898a4] hover:border-white/25 hover:text-white'
                           }`}
                         >
                           <Mic className="h-3.5 w-3.5" />
-                          Direct Live STT
+                          Raw Verbatim
                         </button>
                       </Magnet>
                       <Magnet strength={0.16} padding={18}>
                         <button
                           type="button"
-                          onClick={() => updateConfig({ dictation_mode: 'polish' })}
+                          onClick={() =>
+                            updateConfig({ transcription_mode: 'smart', dictation_mode: 'accurate' })
+                          }
                           className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2 text-[12px] font-semibold transition ${
-                            config.dictation_mode === 'polish'
+                            config.transcription_mode === 'smart' && config.dictation_mode === 'accurate'
+                              ? 'border-[#f4f4f6] bg-[#f4f4f6] text-[#0a0a0b]'
+                              : 'border-white/10 bg-white/[0.03] text-[#9898a4] hover:border-white/25 hover:text-white'
+                          }`}
+                        >
+                          <Mic className="h-3.5 w-3.5" />
+                          Smart Live STT
+                        </button>
+                      </Magnet>
+                      <Magnet strength={0.16} padding={18}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateConfig({ transcription_mode: 'smart', dictation_mode: 'polish' })
+                          }
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2 text-[12px] font-semibold transition ${
+                            config.transcription_mode === 'smart' && config.dictation_mode === 'polish'
                               ? 'border-[#f4f4f6] bg-[#f4f4f6] text-[#0a0a0b]'
                               : 'border-white/10 bg-white/[0.03] text-[#9898a4] hover:border-white/25 hover:text-white'
                           }`}
@@ -608,6 +630,26 @@ export const StudioView: React.FC<StudioViewProps> = ({
                     <option value="az">Azerbaijani Only</option>
                     <option value="en">English Only</option>
                     <option value="auto">Auto Detect</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[11.5px] text-[#a1a5b3]">
+                    Transcript Fidelity (Raw vs Cleanup)
+                  </label>
+                  <select
+                    value={config.transcription_mode ?? 'verbatim'}
+                    onChange={(e) => {
+                      const nextMode = e.target.value as 'verbatim' | 'smart'
+                      updateConfig({
+                        transcription_mode: nextMode,
+                        ...(nextMode === 'verbatim' ? { dictation_mode: 'accurate' } : {}),
+                      })
+                    }}
+                    className="w-full rounded-xl border border-white/12 bg-[#0b0d12] px-3 py-2.5 text-[12.5px] text-[#f4f2ed] outline-none"
+                  >
+                    <option value="verbatim">Raw / Verbatim (No edits — keeps mistakes & repetitions)</option>
+                    <option value="smart">Smart Cleanup (Removes repetitions & smooths grammar)</option>
                   </select>
                 </div>
               </SpotlightCard>
